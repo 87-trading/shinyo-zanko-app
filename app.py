@@ -35,17 +35,11 @@ name = STOCK_NAMES.get(stock_code, "")
 st.subheader(f"📈 {stock_code} {name} 価格チャート")
 
 components.html(f"""
-<div style="height:600px">
-<script src="https://s3.tradingview.com/tv.js"></script>
-<div id="tv" style="height:600px"></div>
-<script>
-new TradingView.widget({{
-  container_id:"tv", autosize:true,
-  symbol:"TSE:{stock_code}", interval:"W",
-  timezone:"Asia/Tokyo", theme:"dark",
-  style:"1", locale:"ja", height:600
-}});
-</script></div>""", height=620)
+<iframe
+  src="https://s.tradingview.com/widgetembed/?symbol=TSE:{stock_code}&interval=W&theme=dark&locale=ja&style=1&timezone=Asia%2FTokyo"
+  style="width:100%;height:600px;border:none"
+></iframe>
+""", height=620)
 
 st.subheader(f"📉 {stock_code} {name} 信用残推移")
 path = f"data/{stock_code}.csv"
