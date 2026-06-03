@@ -4,6 +4,14 @@ import plotly.graph_objects as go
 import os
 import streamlit.components.v1 as components
 
+STOCK_NAMES = {
+    "7203": "トヨタ自動車", "9984": "ソフトバンクG",
+    "6758": "ソニーグループ", "6861": "キーエンス",
+    "8306": "三菱UFJ", "9432": "NTT",
+    "6098": "リクルートHD", "7974": "任天堂",
+    "4063": "信越化学", "8058": "三菱商事",
+}
+
 st.set_page_config(page_title="信用残チャート", page_icon="📊", layout="wide")
 st.title("📊 信用残チャートビューア")
 
@@ -15,27 +23,31 @@ with st.sidebar:
     if os.path.exists("data"):
         for f in sorted(os.listdir("data")):
             if f.endswith(".csv"):
-                st.text(f.replace(".csv",""))
+                code = f.replace(".csv","")
+                name = STOCK_NAMES.get(code, "")
+                st.text(f"{code} {name}")
 
 if not stock_code.isdigit() or len(stock_code) != 4:
     st.error("4桁の銘柄コードを入力してください")
     st.stop()
 
-st.subheader(f"📈 {stock_code} 価格チャート")
+name = STOCK_NAMES.get(stock_code, "")
+st.subheader(f"📈 {stock_code} {name} 価格チャート")
+
 components.html(f"""
-<div style="height:500px">
+<div style="height:600px">
 <script src="https://s3.tradingview.com/tv.js"></script>
-<div id="tv"></div>
+<div id="tv" style="height:600px"></div>
 <script>
 new TradingView.widget({{
   container_id:"tv", autosize:true,
-  symbol:"TSE:{stock_code}", interval:"W",
-  timezone:"Asia/Tokyo", theme:"light",
-  style:"1", locale:"ja"
+  symbol:"TYO:{stock_code}", interval:"W",
+  timezone:"Asia/Tokyo", theme:"dark",
+  style:"1", locale:"ja", height:600
 }});
-</script></div>""", height=520)
+</script></div>""", height=620)
 
-st.subheader(f"📉 {stock_code} 信用残推移")
+st.subheader(f"📉 {stock_code} {name} 信用残推移")
 path = f"data/{stock_code}.csv"
 
 if os.path.exists(path):
@@ -48,7 +60,8 @@ if os.path.exists(path):
         name='信用売り残', marker_color='rgba(50,100,220,0.75)'))
     fig.update_layout(barmode='group', height=400,
         xaxis_title="日付", yaxis_title="残高（株）",
-        legend=dict(orientation="h", y=1.1))
+        legend=dict(orientation="h", y=1.1),
+        template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
     if len(df) >= 2:
         l, p = df.iloc[-1], df.iloc[-2]
@@ -59,4 +72,4 @@ if os.path.exists(path):
         c3.metric("信用売り残", f"{int(l['sell_balance']):,}株",
             delta=f"{int(l['sell_balance']-p['sell_balance']):+,}")
 else:
-    st.info(f"銘柄 {stock_code} のデータがまだありません。GitHubのActionsタブから手動実行してください。")
+    st.info(f"銘柄 {stock_code} のデータがまだありません。")
