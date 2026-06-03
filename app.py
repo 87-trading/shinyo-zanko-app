@@ -41,7 +41,7 @@ components.html(f"""
 <script>
 new TradingView.widget({{
   container_id:"tv", autosize:true,
-  symbol:"TYO:{stock_code}", interval:"W",
+  symbol:"TSE:{stock_code}", interval:"W",
   timezone:"Asia/Tokyo", theme:"dark",
   style:"1", locale:"ja", height:600
 }});
