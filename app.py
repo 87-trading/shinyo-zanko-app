@@ -150,4 +150,30 @@ if df is not None and len(df) > 0:
         cols[2].metric("売り残", fmt(int(l['sell'])),
             delta=f"{int(l['sell']-p['sell']):+,}")
         if has_lending:
-            cols[3].metric("貸付残", fmt(in
+            cols[3].metric("貸付残", fmt(int(l['lending'])),
+                delta=f"{int(l['lending']-p['lending']):+,}")
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=df['date'], y=df['buy'],
+        name='買い残', marker_color='rgba(220,50,50,0.8)'))
+    fig.add_trace(go.Bar(x=df['date'], y=df['sell'],
+        name='売り残', marker_color='rgba(50,100,220,0.8)'))
+    if has_lending:
+        fig.add_trace(go.Bar(x=df['date'], y=df['lending'],
+            name='貸付残', marker_color='rgba(50,180,80,0.8)'))
+        fig.add_trace(go.Scatter(x=df['date'], y=df['combined'],
+            name='売残+貸付残', mode='lines+markers',
+            line=dict(color='orange', width=2, dash='dot')))
+
+    fig.update_layout(
+        barmode='group', height=260,
+        xaxis_title=None, yaxis_title="株数",
+        legend=dict(orientation="h", y=1.15, font=dict(size=10)),
+        template="plotly_dark",
+        margin=dict(l=40, r=10, t=0, b=30),
+        font=dict(size=10)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.caption(f"📡 出典: {source}　週次更新（1時間キャッシュ）")
+else:
+    st.warning(f"「{stock_code}」のデータを取得できませんでした。")
