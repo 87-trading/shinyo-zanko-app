@@ -34,12 +34,8 @@ if not stock_code.isdigit() or len(stock_code) != 4:
 name = STOCK_NAMES.get(stock_code, "")
 st.subheader(f"📈 {stock_code} {name} 価格チャート")
 
-components.html(f"""
-<iframe
-  src="https://s.tradingview.com/widgetembed/?symbol=TSE:{stock_code}&interval=W&theme=dark&locale=ja&style=1&timezone=Asia%2FTokyo"
-  style="width:100%;height:600px;border:none"
-></iframe>
-""", height=620)
+tv_url = f"https://www.tradingview.com/chart/?symbol=TSE%3A{stock_code}"
+st.link_button(f"📈 TradingViewで {stock_code} {name} のチャートを開く →", tv_url, use_container_width=True)
 
 st.subheader(f"📉 {stock_code} {name} 信用残推移")
 path = f"data/{stock_code}.csv"
