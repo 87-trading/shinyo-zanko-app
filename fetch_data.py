@@ -1,44 +1,57 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-import os, time, re
-from datetime import datetime
+import os, time, re, datetime
 
-STOCK_CODES = ["7203","9984","6758","6861","8306","9432","6098","7974","4063","8058"]
+STOCK_CODES = [
+    "7203","9984","6758","6861","8306",
+    "9432","6098","7974","4063","8058",
+]
 
-def clean_number(text):
-    text = str(text).replace(',','').replace('---','0').strip()
-    m = re.search(r'\d+', text)
-    return int(m.group()) if m else 0
+def parse_num(t):
+    t = re.sub(r'[^\d]', '', str(t))
+    return int(t) if t else 0
 
-def fetch_margin_data(code):
-    url = f"https://finance.yahoo.co.jp/quote/{code}.T/margin"
-    headers = {'User-Agent':'Mozilla/5.0','Accept-Language':'ja'}
+def fetch_irbank(code):
+    s = requests.Session()
+    s.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept-Language': 'ja,en-US;q=0.9',
+        'Referer': 'https://irbank.net/',
+    })
     try:
-        res = requests.get(url, headers=headers, timeout=20)
+        s.get('https://irbank.net/', timeout=10)
+        res = s.get(f'https://irbank.net/{code}/credit', timeout=15)
         res.encoding = 'utf-8'
         soup = BeautifulSoup(res.text, 'html.parser')
         records = []
+        current_year = datetime.datetime.now().year
         for table in soup.find_all('table'):
-            rows = table.find_all('tr')
-            if len(rows) < 3:
-                continue
-            for row in rows[1:]:
-                cells = [c.get_text(strip=True) for c in row.find_all(['td','th'])]
-                if len(cells) < 3:
+            for row in table.find_all('tr'):
+                cells = row.find_all(['td','th'])
+                if not cells: continue
+                texts = [c.get_text(strip=True) for c in cells]
+                first = texts[0]
+                if re.match(r'^\d{4}$', first):
+                    current_year = int(first)
                     continue
+                m = re.match(r'^(\d{1,2})/(\d{1,2})$', first)
+                if not m: continue
+                month, day = int(m.group(1)), int(m.group(2))
                 try:
-                    date = pd.to_datetime(cells[0])
-                    buy = clean_number(cells[1])
-                    sell = clean_number(cells[3] if len(cells) > 3 else cells[2])
-                    if buy > 0 or sell > 0:
-                        records.append({'date':date.strftime('%Y-%m-%d'),'buy_balance':buy,'sell_balance':sell})
-                except:
-                    continue
-        print(f"  {code}: {len(records)}件取得")
+                    date = pd.Timestamp(year=current_year, month=month, day=day)
+                except: continue
+                nums = [parse_num(t) for t in texts[1:]]
+                if len(nums) >= 3 and nums[0] > 100:
+                    records.append({
+                        'date': date.strftime('%Y-%m-%d'),
+                        'buy_balance': nums[0],
+                        'sell_balance': nums[1],
+                        'lending_balance': nums[2],
+                    })
         return records if records else None
     except Exception as e:
-        print(f"  {code} エラー: {e}")
+        print(f"  エラー: {e}")
         return None
 
 def save_data(code, records):
@@ -46,19 +59,24 @@ def save_data(code, records):
     path = f"data/{code}.csv"
     new_df = pd.DataFrame(records)
     if os.path.exists(path):
-        df = pd.concat([pd.read_csv(path), new_df]).drop_duplicates(subset=['date'])
+        existing = pd.read_csv(path)
+        if 'lending_balance' not in existing.columns:
+            existing['lending_balance'] = 0
+        df = pd.concat([existing, new_df]).drop_duplicates(subset=['date'])
     else:
         df = new_df
     df.sort_values('date').to_csv(path, index=False)
-    print(f"  保存完了: {path}")
+    print(f"  保存: {len(df)}件")
 
 def main():
-    print(f"=== 開始 {datetime.now().strftime('%Y/%m/%d %H:%M')} ===")
+    print("=== 開始 ===")
     for code in STOCK_CODES:
         print(f"[{code}] 取得中...")
-        records = fetch_margin_data(code)
+        records = fetch_irbank(code)
         if records:
             save_data(code, records)
+        else:
+            print("  スキップ")
         time.sleep(3)
     print("=== 完了 ===")
 
